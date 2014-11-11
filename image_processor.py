@@ -14,6 +14,8 @@ from boto.sqs.message import RawMessage
 from boto.sqs.message import Message
 from boto.s3.key import Key
 
+RETRY_COUNT = 1
+
 ##########################################################
 # Connect to SQS and poll for messages
 ##########################################################
@@ -51,29 +53,46 @@ def main(argv=None):
 	
 	info_message('Retrieving jobs from queue %s. Processed images will be stored in %s and a message placed in queue %s' % (input_queue_name, s3_output_bucket, output_queue_name))
 
-	try:
-		# Connect to SQS and open queue
-		sqs = boto.sqs.connect_to_region(region_name)
-	except Exception as ex:
-		error_message("Encountered an error setting SQS region.  Please confirm you have queues in %s." % (region_name))
-		sys.exit(1)
+	def get_sqs_connection(region_name):
+		count = 0
+		try:
+			# Connect to SQS and open queue
+			return boto.sqs.connect_to_region(region_name)
+		except Exception as ex:
+			if count > RETRY_COUNT:
+				error_message("Encountered an error setting SQS region.  Please confirm you have queues in %s." % (region_name))
+				sys.exit(1)
+			else:
+				count += 1
+				time.sleep(5)
+				get_sqs_connection(region_name)
 
-	try:
-		input_queue = sqs.get_queue(input_queue_name)
-		input_queue.set_message_class(RawMessage)
-	except Exception as ex:
-		error_message("Encountered an error connecting to SQS queue %s. Confirm that your input queue exists." % (input_queue_name))
-		sys.exit(2)
+	def get_queue(sqs, queue_name):
+		count = 0
+		try:
+			if sqs.lookup(queue_name):
+				queue = sqs.get_queue(input_queue_name)
+				queue.set_message_class(RawMessage)
+				return queue
+			else:
+				sqs.create(queue_name)
+				get_queue(queue_name)
 
-	try:
-		output_queue = sqs.get_queue(output_queue_name)
-		output_queue.set_message_class(RawMessage)
-	except Exception as ex:
-		error_message("Encountered an error connecting to SQS queue %s. Confirm that your output queue exists." % (output_queue_name))
-		sys.exit(3)
+		except Exception as ex:
+			if count > RETRY_COUNT:
+				error_message("Encountered an error connecting to SQS queue %s. Confirm that your queue exists." % (queue_name))
+				sys.exit(2)
+			else:
+				count += 1
+				time.sleep(5)
+				get_queue(queue_name)
+
+	sqs = get_sqs_connection(region_name)
+	input_queue = get_queue(sys, input_queue_name )
+	output_queue = get_queue(sys, output_queue_name)
 
 	info_message("Polling input queue...")
-	
+
 	while True:
 		# Get messages
 		rs = input_queue.get_messages(num_messages=1)
@@ -124,7 +143,6 @@ def process_message(message, s3_output_bucket, s3_endpoint, job_id):
 		output_image_path = output_dir + output_image_name 
 
 
-		
 		# Invoke ImageMagick to create a montage
 		os.system("montage -size 400x400 null: %s*.* null: -thumbnail 400x400 -bordercolor white -background black +polaroid -resize 80%% -gravity center -background black -geometry -10+2  -tile x1 %s" % (output_dir, output_image_path))
 
@@ -162,7 +180,7 @@ def write_image_to_s3(path, file_name, s3_output_bucket, s3_endpoint):
 	
 	# Return a URL to the object
 	return "https://%s.s3.amazonaws.com/%s" % (s3_output_bucket, k.key)
-	
+
 ##############################################################################
 # Verify S3 bucket, create it if required
 ##############################################################################
