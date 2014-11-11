@@ -19,7 +19,14 @@ RETRY_COUNT = 1
 
 def process_jobs(queue, s3_output_bucket, s3_endpoint, input_queue, output_queue):
 	while True:
-		message, job_id = queue.get()
+		raw_message = queue.get()
+
+		info_message("Message received...")
+		# Parse JSON message (going two levels deep to get the embedded message)
+		message = raw_message.get_body()
+
+		# Create a unique job id
+		job_id = str(uuid.uuid4())
 
 		# Process the image, creating the image montage
 		output_url = process_message(message, s3_output_bucket, s3_endpoint, job_id)
@@ -122,16 +129,8 @@ def main(argv=None):
 		rs = input_queue.get_messages(num_messages=1)
 	
 		if len(rs) > 0:
-			# Iterate each message
 			for raw_message in rs:
-				info_message("Message received...")
-				# Parse JSON message (going two levels deep to get the embedded message)
-				message = raw_message.get_body()
-
-				# Create a unique job id
-				job_id = str(uuid.uuid4())
-
-				queue.put((message, job_id))
+				queue.put(raw_message)
 
 	worker.terminate()
 
