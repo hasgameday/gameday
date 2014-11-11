@@ -115,7 +115,6 @@ def main(argv=None):
 				sys.exit(2)
 			else:
 				count += 1
-				time.sleep(5)
 				get_queue(queue_name)
 
 	sqs = get_sqs_connection(region_name)
