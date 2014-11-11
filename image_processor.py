@@ -23,7 +23,7 @@ def process_jobs(queue, s3_output_bucket, s3_endpoint, input_queue, output_queue
 	while True:
 		raw_message = queue.get()
 
-		info_message("Message received: %s", raw_message)
+		info_message("Message received")
 		# Parse JSON message (going two levels deep to get the embedded message)
 		message = raw_message.get_body()
 
