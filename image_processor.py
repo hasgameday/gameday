@@ -17,11 +17,9 @@ from boto.s3.key import Key
 
 RETRY_COUNT = 1
 
-def process_jobs(queue, s3_output_bucket, s3_endpoint):
+def process_jobs(queue, s3_output_bucket, s3_endpoint, input_queue, output_queue):
 	while True:
 		message, job_id = queue.get()
-		info_message("received!")
-		info_message(message)
 
 		# Process the image, creating the image montage
 		output_url = process_message(message, s3_output_bucket, s3_endpoint, job_id)
@@ -72,11 +70,6 @@ def main(argv=None):
 	if s3_output_bucket == "":
 		s3_output_bucket = create_s3_output_bucket(s3_output_bucket, s3_endpoint, region_name)
 	
-	# start worker process
-	queue = multiprocessing.Queue()
-	worker = multiprocessing.Process(target=process_jobs, args=(queue, s3_output_bucket, s3_endpoint))
-	worker.start()
-
 	info_message('Retrieving jobs from queue %s. Processed images will be stored in %s and a message placed in queue %s' % (input_queue_name, s3_output_bucket, output_queue_name))
 
 	def get_sqs_connection(region_name):
@@ -117,6 +110,11 @@ def main(argv=None):
 	input_queue = get_queue(sqs, input_queue_name)
 	output_queue = get_queue(sqs, output_queue_name)
 
+	# start worker process
+	queue = multiprocessing.Queue()
+	worker = multiprocessing.Process(target=process_jobs, args=(queue, s3_output_bucket, s3_endpoint, input_queue, output_queue))
+	worker.start()
+
 	info_message("Polling input queue...")
 
 	while True:
@@ -129,7 +127,6 @@ def main(argv=None):
 				info_message("Message received...")
 				# Parse JSON message (going two levels deep to get the embedded message)
 				message = raw_message.get_body()
-				info_message(message)
 
 				# Create a unique job id
 				job_id = str(uuid.uuid4())
