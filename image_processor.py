@@ -150,12 +150,13 @@ def process_message(message, s3_output_bucket, s3_endpoint, job_id):
 		for line in message.splitlines():
 			if line is None or line == "" or line == "\n":
 				continue
-			info_message("Downloading image from %s" % line)
+			print "line", line
+			info_message("Downloading image from \"%s\"" % line)
 
 			try:
 
 				opt = "-P %s \"%s\"" % (output_dir, line)
-				info_message("downloading from %s" % line)
+				info_message("downloading from \"%s\"" % line)
 				return_code = call("wget " + opt, shell=True)
 				if return_code != 0:
 					info_message("wget exited with %s", return_code)
