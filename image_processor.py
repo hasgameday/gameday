@@ -108,7 +108,7 @@ def main(argv=None):
 				return queue
 			else:
 				sqs.create(queue_name)
-				get_queue(queue_name)
+				get_queue(sqs, queue_name)
 
 		except Exception as ex:
 			if count > RETRY_COUNT:
@@ -116,7 +116,7 @@ def main(argv=None):
 				sys.exit(2)
 			else:
 				count += 1
-				get_queue(queue_name)
+				get_queue(sqs, queue_name)
 
 	sqs = get_sqs_connection(region_name)
 	input_queue = get_queue(sqs, input_queue_name)
