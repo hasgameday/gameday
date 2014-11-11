@@ -176,9 +176,8 @@ def process_message(message, s3_output_bucket, s3_endpoint, job_id):
 
 		try:
 			# Invoke ImageMagick to create a montage
-			command = "montage"
 			opts = " -size 400x400 null: %s*.* null: -thumbnail 400x400 -bordercolor white -background black +polaroid -resize 80%% -gravity center -background black -geometry -10+2  -tile x1 %s" % (output_dir, output_image_path)
-			return_code = call(command + opts)
+			return_code = call("montage " + opts, shell=True)
 
 			if return_code != 0:
 				info_message("montage exited with %s" % return_code)
