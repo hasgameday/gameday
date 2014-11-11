@@ -155,6 +155,7 @@ def process_message(message, s3_output_bucket, s3_endpoint, job_id):
 			try:
 				opt = "-P %s %s" % (output_dir, line)
 				info_message("downloading from %s" % line)
+				info_message("command: wget %s" % opt)
 				return_code = call(["wget", opt], shell=True)
 				if return_code < 0:
 					info_message("wget exited with %s", return_code)
