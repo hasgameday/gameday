@@ -11,16 +11,27 @@ import uuid
 import math
 import httplib
 import multiprocessing
+<<<<<<< HEAD
 from subprocess import call
+=======
+import shutil
+>>>>>>> b0b2d2c16d6ae4d71e2d1b1bb2129df8e536b2e8
 from boto.sqs.message import RawMessage
 from boto.sqs.message import Message
 from boto.s3.key import Key
 
-RETRY_COUNT = 1
+RETRY_COUNT = 3
 
 def process_jobs(queue, s3_output_bucket, s3_endpoint, input_queue, output_queue):
 	while True:
-		message, job_id = queue.get()
+		raw_message = queue.get()
+
+		info_message("Message received...")
+		# Parse JSON message (going two levels deep to get the embedded message)
+		message = raw_message.get_body()
+
+		# Create a unique job id
+		job_id = str(uuid.uuid4())
 
 		# Process the image, creating the image montage
 		output_url = process_message(message, s3_output_bucket, s3_endpoint, job_id)
@@ -35,6 +46,9 @@ def process_jobs(queue, s3_output_bucket, s3_endpoint, input_queue, output_queue
 	
 		# Delete message from the queue
 		input_queue.delete_message(raw_message)
+
+		# delete job directory
+		clean_up_job(job_id)
 
 ##########################################################
 # Connect to SQS and poll for messages
@@ -123,16 +137,8 @@ def main(argv=None):
 		rs = input_queue.get_messages(num_messages=1)
 	
 		if len(rs) > 0:
-			# Iterate each message
 			for raw_message in rs:
-				info_message("Message received...")
-				# Parse JSON message (going two levels deep to get the embedded message)
-				message = raw_message.get_body()
-
-				# Create a unique job id
-				job_id = str(uuid.uuid4())
-
-				queue.put((message, job_id))
+				queue.put(raw_message)
 
 	worker.terminate()
 
@@ -156,11 +162,7 @@ def process_message(message, s3_output_bucket, s3_endpoint, job_id):
     		except OSError as e:
     			info_message("There was a junk url passed.")
     			continue
-
-
-
-
-
+    			
 		output_image_name = "output-%s.jpg" % (job_id)
 		output_image_path = output_dir + output_image_name 
 
@@ -202,11 +204,19 @@ def write_image_to_s3(path, file_name, s3_output_bucket, s3_endpoint):
 	# Return a URL to the object
 	return "https://%s.s3.amazonaws.com/%s" % (s3_output_bucket, k.key)
 
+
+def clean_up_job(job_id):
+	try:
+		output_dir = "/home/ec2-user/jobs/%s/" % (job_id)
+		shutil.rmtree(output_dir)
+	except:
+		error_message("error deleting %s" % output_dir)
+		pass
+
 ##############################################################################
 # Verify S3 bucket, create it if required
 ##############################################################################
 def create_s3_output_bucket(s3_output_bucket, s3_endpoint, region_name):
-
 	# Connect to S3
 	s3 = boto.connect_s3(host=s3_endpoint)
 	
@@ -244,10 +254,16 @@ class Logger:
 		self.log.addHandler(self.file_handler)
 		
 	def info(self, message):
-		self.log.info(time.asctime() + " " + message)
+		try:
+			self.log.info(time.asctime() + " " + message)
+		except:
+			self.log.info(message)
 		
 	def error(self, message):
-		self.log.error(time.asctime() + " " + message)
+		try:
+			self.log.error(time.asctime() + " " + message)
+		except:
+			self.log.error(message)
 
 logger = Logger()
 
