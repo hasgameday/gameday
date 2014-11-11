@@ -195,7 +195,7 @@ def write_output_message(message, output_queue):
 ##############################################################################
 def write_image_to_s3(path, file_name, s3_output_bucket, s3_endpoint):
 	# Connect to S3 and get the output bucket
-	s3 = s3_connection(s3_endpoint)
+	s3 = s3_connection(s3_endpoint, 0)
 	output_bucket = s3.get_bucket(s3_output_bucket)
 
 	# if os.path.exists(path):
@@ -218,7 +218,8 @@ def clean_up_job(job_id):
 		error_message("error deleting %s" % output_dir)
 		pass
 
-def s3_connection(s3_endpoint):
+
+def s3_connection(s3_endpoint, retry):
 	retry = 0
 	try:
 		return boto.connect_s3(host=s3_endpoint)
@@ -226,9 +227,7 @@ def s3_connection(s3_endpoint):
 		if retry < RETRY_COUNT:
 			retry += 1
 			time.sleep(5)
-			s3_connection(s3_endpoint)
-
-
+			s3_connection(s3_endpoint, retry)
 
 
 ##############################################################################
@@ -236,7 +235,7 @@ def s3_connection(s3_endpoint):
 ##############################################################################
 def create_s3_output_bucket(s3_output_bucket, s3_endpoint, region_name):
 	# Connect to S3
-	s3 = s3_connection(s3_endpoint)
+	s3 = s3_connection(s3_endpoint, 0)
 
 	# Find any existing buckets starting with 'image-bucket'
 	buckets = [bucket.name for bucket in s3.get_all_buckets() if bucket.name.startswith('image-bucket')]
