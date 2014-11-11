@@ -153,6 +153,7 @@ def process_message(message, s3_output_bucket, s3_endpoint, job_id):
 			info_message("Downloading image from %s" % line)
 
 			try:
+
 				opt = "-P %s %s" % (output_dir, line)
 				info_message("downloading from %s" % line)
 				return_code = call("wget " + opt, shell=True)
