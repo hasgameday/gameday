@@ -11,6 +11,7 @@ import uuid
 import math
 import httplib
 import multiprocessing
+from subprocess import call
 from boto.sqs.message import RawMessage
 from boto.sqs.message import Message
 from boto.s3.key import Key
@@ -145,7 +146,20 @@ def process_message(message, s3_output_bucket, s3_endpoint, job_id):
 		# Download images from URLs specified in message
 		for line in message.splitlines():
 			info_message("Downloading image from %s" % line)
-			os.system("wget -P %s %s" % (output_dir, line))
+
+			try:
+				opt = "-P %s %s" % (output_dir, line)
+				reutrn_code = call("wget", opt)
+				if return_code < 0:
+					info_message("wget exited with %s", return_code)
+					continue
+    		except OSError as e:
+    			info_message("There was a junk url passed.")
+    			continue
+
+
+
+
 
 		output_image_name = "output-%s.jpg" % (job_id)
 		output_image_path = output_dir + output_image_name 
