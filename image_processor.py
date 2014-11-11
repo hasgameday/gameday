@@ -151,7 +151,6 @@ def process_message(message, s3_output_bucket, s3_endpoint, job_id):
 		for line in message.splitlines():
 			if line is None or line == "" or line == "\n" or not validate_uri(line):
 				continue
-			print "line", line
 			info_message("Downloading image from \"%s\"" % line)
 
 			try:
@@ -232,6 +231,7 @@ def create_s3_output_bucket(s3_output_bucket, s3_endpoint, region_name):
 	s3.create_bucket(name, location=region_name)
 	return name
 
+
 def validate_uri(uri, scheme=True):
     regex = re.compile(
         r'^(?:http|ftp)s?://'  # http:// or https://
@@ -241,10 +241,7 @@ def validate_uri(uri, scheme=True):
         r'(?::\d+)?'  # optional port
         r'(?:/?|[/?]\S+)$', flags=re.IGNORECASE)
 
-    if regex.match(uri):
-        True
-    else:
-        False
+    return regex.match(uri)
 
 ##############################################################################
 # Use logging class to log simple info messages
