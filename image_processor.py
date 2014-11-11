@@ -86,7 +86,7 @@ def main(argv=None):
 	info_message('Retrieving jobs from queue %s. Processed images will be stored in %s and a message placed in queue %s' % (input_queue_name, s3_output_bucket, output_queue_name))
 
 	error_count = 0
-	def get_sqs_connection(region_name):
+	def get_sqs_connection(region_name, error_count):
 		try:
 			# Connect to SQS and open queue
 			return boto.sqs.connect_to_region(region_name)
@@ -97,9 +97,9 @@ def main(argv=None):
 			else:
 				error_count += 1
 				time.sleep(5)
-				get_sqs_connection(region_name)
+				return get_sqs_connection(region_name, error_count)
 
-	def get_queue(sqs, queue_name):
+	def get_queue(sqs, queue_name, error_count):
 		try:
 			if sqs.lookup(queue_name):
 				queue = sqs.get_queue(queue_name)
@@ -107,7 +107,7 @@ def main(argv=None):
 				return queue
 			else:
 				sqs.create(queue_name)
-				get_queue(sqs, queue_name)
+				return get_queue(sqs, queue_name, error_count)
 
 		except Exception as ex:
 			if error_count > RETRY_COUNT:
@@ -116,11 +116,11 @@ def main(argv=None):
 			else:
 				error_count += 1
 				time.sleep(5)
-				get_queue(sqs, queue_name)
+				return get_queue(sqs, queue_name, error_count)
 
-	sqs = get_sqs_connection(region_name)
-	input_queue = get_queue(sqs, input_queue_name)
-	output_queue = get_queue(sqs, output_queue_name)
+	sqs = get_sqs_connection(region_name, error_count)
+	input_queue = get_queue(sqs, input_queue_name, error_count)
+	output_queue = get_queue(sqs, output_queue_name, error_count)
 
 	# start worker process
 	queue = multiprocessing.Queue()
