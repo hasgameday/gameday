@@ -10,9 +10,30 @@ import StringIO
 import uuid
 import math
 import httplib
+import multiprocessing
 from boto.sqs.message import RawMessage
 from boto.sqs.message import Message
 from boto.s3.key import Key
+
+
+def process_jobs(queue, s3_output_bucket, s3_endpoint):
+	while True:
+		message, job_id = queue.get()
+
+		# Process the image, creating the image montage
+		output_url = process_message(message, s3_output_bucket, s3_endpoint, job_id)
+
+		output_message = "Output available at: %s" % (output_url)
+	
+		# Write message to output queue
+		write_output_message(output_message, output_queue)
+	
+		info_message(output_message)
+		info_message("Image processing completed.")
+	
+		# Delete message from the queue
+		input_queue.delete_message(raw_message)
+
 
 ##########################################################
 # Connect to SQS and poll for messages
@@ -47,8 +68,13 @@ def main(argv=None):
 	# Get S3 bucket, create if none supplied
 	s3_output_bucket = args.s3_output_bucket
 	if s3_output_bucket == "":
-	  s3_output_bucket = create_s3_output_bucket(s3_output_bucket, s3_endpoint, region_name)
+		s3_output_bucket = create_s3_output_bucket(s3_output_bucket, s3_endpoint, region_name)
 	
+	# start worker process
+	queue = multiprocessing.Queue()
+	worker = multiprocessing.Process(target=process_jobs, args=(queue, s3_output_bucket, s3_endpoint))
+	worker.start()
+
 	info_message('Retrieving jobs from queue %s. Processed images will be stored in %s and a message placed in queue %s' % (input_queue_name, s3_output_bucket, output_queue_name))
 
 	try:
@@ -88,25 +114,9 @@ def main(argv=None):
 				# Create a unique job id
 				job_id = str(uuid.uuid4())
 
-				# Process the image, creating the image montage
-				output_url = process_message(message, s3_output_bucket, s3_endpoint, job_id)
-			
-				# Sleep for a while to simulate a heavy workload
-				# (Otherwise the queue empties too fast!)
-				time.sleep(15)
-			
-				output_message = "Output available at: %s" % (output_url)
-			
-				# Write message to output queue
-				write_output_message(output_message, output_queue)
-			
-				info_message(output_message)
-				info_message("Image processing completed.")
-			
-				# Delete message from the queue
-				input_queue.delete_message(raw_message)
-	
-		time.sleep(5)
+				queue.put((message, job_id))
+
+	worker.terminate()
 
 ##############################################################################
 # Process a newline-delimited list of URls
@@ -123,8 +133,6 @@ def process_message(message, s3_output_bucket, s3_endpoint, job_id):
 		output_image_name = "output-%s.jpg" % (job_id)
 		output_image_path = output_dir + output_image_name 
 
-
-		
 		# Invoke ImageMagick to create a montage
 		os.system("montage -size 400x400 null: %s*.* null: -thumbnail 400x400 -bordercolor white -background black +polaroid -resize 80%% -gravity center -background black -geometry -10+2  -tile x1 %s" % (output_dir, output_image_path))
 
