@@ -102,7 +102,7 @@ def main(argv=None):
 		count = 0
 		try:
 			if sqs.lookup(queue_name):
-				queue = sqs.get_queue(input_queue_name)
+				queue = sqs.get_queue(queue_name)
 				queue.set_message_class(RawMessage)
 				return queue
 			else:
