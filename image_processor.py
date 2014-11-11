@@ -107,7 +107,7 @@ def main(argv=None):
 				queue.set_message_class(RawMessage)
 				return queue
 			else:
-				sqs.create(queue_name)
+				sqs.create_queue(queue_name)
 				get_queue(queue_name)
 
 		except Exception as ex:
@@ -193,16 +193,17 @@ def write_output_message(message, output_queue):
 ##############################################################################
 def write_image_to_s3(path, file_name, s3_output_bucket, s3_endpoint):
 	# Connect to S3 and get the output bucket
-	s3 = boto.connect_s3(host=s3_endpoint)
+	s3 = s3_connection(s3_endpoint)
 	output_bucket = s3.get_bucket(s3_output_bucket)
 
+	# if os.path.exists(path):
 	# Create a key to store the instances_json text
 	k = Key(output_bucket)
 	k.key = "out/" + file_name
 	k.set_metadata("Content-Type", "image/jpeg")
 	k.set_contents_from_filename(path)
 	k.set_acl('public-read')
-	
+
 	# Return a URL to the object
 	return "https://%s.s3.amazonaws.com/%s" % (s3_output_bucket, k.key)
 
@@ -215,13 +216,26 @@ def clean_up_job(job_id):
 		error_message("error deleting %s" % output_dir)
 		pass
 
+def s3_connection(s3_endpoint):
+	retry = 0
+	try:
+		return boto.connect_s3(host=s3_endpoint)
+	except:
+		if retry < RETRY_COUNT:
+			retry += 1
+			time.sleep(5)
+			s3_connection(s3_endpoint)
+
+
+
+
 ##############################################################################
 # Verify S3 bucket, create it if required
 ##############################################################################
 def create_s3_output_bucket(s3_output_bucket, s3_endpoint, region_name):
 	# Connect to S3
-	s3 = boto.connect_s3(host=s3_endpoint)
-	
+	s3 = s3_connection(s3_endpoint)
+
 	# Find any existing buckets starting with 'image-bucket'
 	buckets = [bucket.name for bucket in s3.get_all_buckets() if bucket.name.startswith('image-bucket')]
 	if len(buckets) > 0:
