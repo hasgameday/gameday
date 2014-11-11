@@ -156,10 +156,11 @@ def process_message(message, s3_output_bucket, s3_endpoint, job_id):
 				return_code = call("wget", opt)
 				if return_code < 0:
 					info_message("wget exited with %s", return_code)
-					continue
+					
+					# continue
 			except OSError as e:
 				info_message("There was a junk url passed.")
-				continue
+				# continue
 
 		output_image_name = "output-%s.jpg" % (job_id)
 		output_image_path = output_dir + output_image_name 
