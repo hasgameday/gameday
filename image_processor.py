@@ -11,11 +11,8 @@ import uuid
 import math
 import httplib
 import multiprocessing
-<<<<<<< HEAD
 from subprocess import call
-=======
 import shutil
->>>>>>> b0b2d2c16d6ae4d71e2d1b1bb2129df8e536b2e8
 from boto.sqs.message import RawMessage
 from boto.sqs.message import Message
 from boto.s3.key import Key
@@ -162,7 +159,7 @@ def process_message(message, s3_output_bucket, s3_endpoint, job_id):
     		except OSError as e:
     			info_message("There was a junk url passed.")
     			continue
-    			
+
 		output_image_name = "output-%s.jpg" % (job_id)
 		output_image_path = output_dir + output_image_name 
 
