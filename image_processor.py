@@ -88,8 +88,8 @@ def main(argv=None):
 				get_queue(queue_name)
 
 	sqs = get_sqs_connection(region_name)
-	input_queue = get_queue(sys, input_queue_name )
-	output_queue = get_queue(sys, output_queue_name)
+	input_queue = get_queue(sqs, input_queue_name)
+	output_queue = get_queue(sqs, output_queue_name)
 
 	info_message("Polling input queue...")
 
