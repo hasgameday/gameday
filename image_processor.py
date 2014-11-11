@@ -85,22 +85,21 @@ def main(argv=None):
 	
 	info_message('Retrieving jobs from queue %s. Processed images will be stored in %s and a message placed in queue %s' % (input_queue_name, s3_output_bucket, output_queue_name))
 
-	def get_sqs_connection(region_name):
-		count = 0
+	error_count = 0
+	def get_sqs_connection(region_name, error_count):
 		try:
 			# Connect to SQS and open queue
 			return boto.sqs.connect_to_region(region_name)
 		except Exception as ex:
-			if count > RETRY_COUNT:
+			if error_count > RETRY_COUNT:
 				error_message("Encountered an error setting SQS region.  Please confirm you have queues in %s." % (region_name))
 				sys.exit(1)
 			else:
-				count += 1
+				error_count += 1
 				time.sleep(5)
-				get_sqs_connection(region_name)
+				return get_sqs_connection(region_name, error_count)
 
-	def get_queue(sqs, queue_name):
-		count = 0
+	def get_queue(sqs, queue_name, error_count):
 		try:
 			if sqs.lookup(queue_name):
 				queue = sqs.get_queue(queue_name)
@@ -108,19 +107,22 @@ def main(argv=None):
 				return queue
 			else:
 				sqs.create_queue(queue_name)
-				get_queue(queue_name)
+				return get_queue(sqs, queue_name, error_count)
+
 
 		except Exception as ex:
-			if count > RETRY_COUNT:
-				error_message("Encountered an error connecting to SQS queue %s. Confirm that your queue exists." % (queue_name))
+			if error_count > RETRY_COUNT:
+				error_message("Encountered an error connecting to SQS queue %s." % (queue_name))
+				error_message(ex)
 				sys.exit(2)
 			else:
-				count += 1
-				get_queue(queue_name)
+				error_count += 1
+				time.sleep(5)
+				return get_queue(sqs, queue_name, error_count)
 
-	sqs = get_sqs_connection(region_name)
-	input_queue = get_queue(sqs, input_queue_name)
-	output_queue = get_queue(sqs, output_queue_name)
+	sqs = get_sqs_connection(region_name, error_count)
+	input_queue = get_queue(sqs, input_queue_name, error_count)
+	output_queue = get_queue(sqs, output_queue_name, error_count)
 
 	# start worker process
 	queue = multiprocessing.Queue()
@@ -151,7 +153,6 @@ def process_message(message, s3_output_bucket, s3_endpoint, job_id):
 		for line in message.splitlines():
 			if line is None or line == "" or line == "\n" or not validate_uri(line):
 				continue
-			print "line", line
 			info_message("Downloading image from \"%s\"" % line)
 
 			try:
@@ -159,7 +160,7 @@ def process_message(message, s3_output_bucket, s3_endpoint, job_id):
 				info_message("downloading from \"%s\"" % line)
 				return_code = call("wget " + opt, shell=True)
 				if return_code != 0:
-					info_message("wget exited with %s", return_code)
+					info_message("wget exited with %s" % return_code)
 					continue
 			except OSError as e:
 				info_message("There was a junk url passed.")
@@ -179,6 +180,7 @@ def process_message(message, s3_output_bucket, s3_endpoint, job_id):
 	except:
 		error_message("An error occurred. Please show this to your class instructor.")
 		error_message(sys.exc_info()[0])
+		raise
 		
 ##############################################################################
 # Write the result of a job to the output queue
@@ -246,6 +248,7 @@ def create_s3_output_bucket(s3_output_bucket, s3_endpoint, region_name):
 	s3.create_bucket(name, location=region_name)
 	return name
 
+
 def validate_uri(uri, scheme=True):
     regex = re.compile(
         r'^(?:http|ftp)s?://'  # http:// or https://
@@ -255,10 +258,7 @@ def validate_uri(uri, scheme=True):
         r'(?::\d+)?'  # optional port
         r'(?:/?|[/?]\S+)$', flags=re.IGNORECASE)
 
-    if regex.match(uri):
-        True
-    else:
-        False
+    return regex.match(uri)
 
 ##############################################################################
 # Use logging class to log simple info messages
