@@ -34,6 +34,10 @@ def process_jobs(queue, s3_output_bucket, s3_endpoint, input_queue, output_queue
 		# Process the image, creating the image montage
 		output_url = process_message(message, s3_output_bucket, s3_endpoint, job_id)
 
+		if output_url is None:
+			info_message("output url was none :( moving on.")
+			continue
+
 		output_message = "Output available at: %s" % (output_url)
 	
 		# Write message to output queue
@@ -192,6 +196,7 @@ def process_message(message, s3_output_bucket, s3_endpoint, job_id):
 	except:
 		error_message("An error occurred. Please show this to your class instructor.")
 		error_message(sys.exc_info()[0])
+		return None
 		
 ##############################################################################
 # Write the result of a job to the output queue
