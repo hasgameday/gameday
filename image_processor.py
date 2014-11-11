@@ -149,7 +149,7 @@ def process_message(message, s3_output_bucket, s3_endpoint, job_id):
 
 		# Download images from URLs specified in message
 		for line in message.splitlines():
-			if line is None or line == "" or line == "\n" or validate_uri(line):
+			if line is None or line == "" or line == "\n" or not validate_uri(line):
 				continue
 			print "line", line
 			info_message("Downloading image from \"%s\"" % line)
