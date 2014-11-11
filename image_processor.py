@@ -106,12 +106,13 @@ def main(argv=None):
 				queue.set_message_class(RawMessage)
 				return queue
 			else:
-				sqs.create(queue_name)
+				sqs.create_queue(queue_name)
 				return get_queue(sqs, queue_name, error_count)
 
 		except Exception as ex:
 			if error_count > RETRY_COUNT:
-				error_message("Encountered an error connecting to SQS queue %s. Confirm that your queue exists." % (queue_name))
+				error_message("Encountered an error connecting to SQS queue %s." % (queue_name))
+				error_message(ex)
 				sys.exit(2)
 			else:
 				error_count += 1
