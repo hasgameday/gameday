@@ -5,6 +5,7 @@ import sys
 import getopt
 import argparse
 import os
+import re
 import logging
 import StringIO
 import uuid
