@@ -175,7 +175,7 @@ def process_message(message, s3_output_bucket, s3_endpoint, job_id):
 
 		# Return the output url
 		return output_url
-	except IOError:
+	except:
 		error_message("An error occurred. Please show this to your class instructor.")
 		error_message(sys.exc_info()[0])
 		
