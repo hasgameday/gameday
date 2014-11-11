@@ -185,7 +185,7 @@ def process_message(message, s3_output_bucket, s3_endpoint, job_id):
 				return None
 				# os.system("montage -size 400x400 null: %s*.* null: -thumbnail 400x400 -bordercolor white -background black +polaroid -resize 80%% -gravity center -background black -geometry -10+2  -tile x1 %s" % (output_dir, output_image_path))
 		except Exception as e:
-			info_message("Something went wrong with montage: %s" e)
+			info_message("Something went wrong with montage: %s" % e)
 			return None
 
 		# Write the resulting image to s3
