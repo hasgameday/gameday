@@ -11,6 +11,7 @@ import uuid
 import math
 import httplib
 import multiprocessing
+import shutil
 from boto.sqs.message import RawMessage
 from boto.sqs.message import Message
 from boto.s3.key import Key
@@ -41,6 +42,9 @@ def process_jobs(queue, s3_output_bucket, s3_endpoint, input_queue, output_queue
 	
 		# Delete message from the queue
 		input_queue.delete_message(raw_message)
+
+		# delete job directory
+		clean_up_job(job_id)
 
 ##########################################################
 # Connect to SQS and poll for messages
@@ -187,11 +191,19 @@ def write_image_to_s3(path, file_name, s3_output_bucket, s3_endpoint):
 	# Return a URL to the object
 	return "https://%s.s3.amazonaws.com/%s" % (s3_output_bucket, k.key)
 
+
+def clean_up_job(job_id):
+	try:
+		output_dir = "/home/ec2-user/jobs/%s/" % (job_id)
+		shutil.rmtree(output_dir)
+	except:
+		error_message("error deleting %s" % output_dir)
+		pass
+
 ##############################################################################
 # Verify S3 bucket, create it if required
 ##############################################################################
 def create_s3_output_bucket(s3_output_bucket, s3_endpoint, region_name):
-
 	# Connect to S3
 	s3 = boto.connect_s3(host=s3_endpoint)
 	
