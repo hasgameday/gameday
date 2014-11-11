@@ -152,6 +152,7 @@ def process_message(message, s3_output_bucket, s3_endpoint, job_id):
 		# Download images from URLs specified in message
 		for line in message.splitlines():
 			if line is None or line == "" or line == "\n" or not validate_uri(line):
+				info_message("There was a junk url passed.")
 				continue
 			info_message("Downloading image from \"%s\"" % line)
 
@@ -163,14 +164,25 @@ def process_message(message, s3_output_bucket, s3_endpoint, job_id):
 					info_message("wget exited with %s" % return_code)
 					continue
 			except OSError as e:
-				info_message("There was a junk url passed.")
+				info_message("going to keep working but look at this error: %s" % e)
 				continue
 
 		output_image_name = "output-%s.jpg" % (job_id)
 		output_image_path = output_dir + output_image_name 
 
-		# Invoke ImageMagick to create a montage
-		os.system("montage -size 400x400 null: %s*.* null: -thumbnail 400x400 -bordercolor white -background black +polaroid -resize 80%% -gravity center -background black -geometry -10+2  -tile x1 %s" % (output_dir, output_image_path))
+		try:
+			# Invoke ImageMagick to create a montage
+			command = "montage"
+			opts = " -size 400x400 null: %s*.* null: -thumbnail 400x400 -bordercolor white -background black +polaroid -resize 80%% -gravity center -background black -geometry -10+2  -tile x1 %s" % (output_dir, output_image_path)
+			return_code = call(command + opts)
+
+			if return_code != 0:
+				info_message("montage exited with %s" % return_code)
+				continue
+				# os.system("montage -size 400x400 null: %s*.* null: -thumbnail 400x400 -bordercolor white -background black +polaroid -resize 80%% -gravity center -background black -geometry -10+2  -tile x1 %s" % (output_dir, output_image_path))
+		except Exception as e:
+			info_message("Something went wrong with montage: %s" e)
+			continue
 
 		# Write the resulting image to s3
 		output_url = write_image_to_s3(output_image_path, output_image_name, s3_output_bucket, s3_endpoint)
@@ -180,7 +192,6 @@ def process_message(message, s3_output_bucket, s3_endpoint, job_id):
 	except:
 		error_message("An error occurred. Please show this to your class instructor.")
 		error_message(sys.exc_info()[0])
-		raise
 		
 ##############################################################################
 # Write the result of a job to the output queue
@@ -227,9 +238,6 @@ def s3_connection(s3_endpoint):
 			retry += 1
 			time.sleep(5)
 			s3_connection(s3_endpoint)
-
-
-
 
 ##############################################################################
 # Verify S3 bucket, create it if required
