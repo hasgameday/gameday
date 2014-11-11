@@ -148,13 +148,12 @@ def process_message(message, s3_output_bucket, s3_endpoint, job_id):
 
 		# Download images from URLs specified in message
 		for line in message.splitlines():
-			if line is None or line == "" or line == "\n":
+			if line is None or line == "" or line == "\n" or validate_uri(line):
 				continue
 			print "line", line
 			info_message("Downloading image from \"%s\"" % line)
 
 			try:
-
 				opt = "-P %s \"%s\"" % (output_dir, line)
 				info_message("downloading from \"%s\"" % line)
 				return_code = call("wget " + opt, shell=True)
@@ -231,7 +230,21 @@ def create_s3_output_bucket(s3_output_bucket, s3_endpoint, region_name):
 	name = 'image-bucket-' + str(uuid.uuid4())
 	s3.create_bucket(name, location=region_name)
 	return name
-	
+
+def validate_uri(uri, scheme=True):
+    regex = re.compile(
+        r'^(?:http|ftp)s?://'  # http:// or https://
+        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'  # domain...
+        r'localhost|'  # localhost...
+        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ...or ip
+        r'(?::\d+)?'  # optional port
+        r'(?:/?|[/?]\S+)$', flags=re.IGNORECASE)
+
+    if regex.match(uri):
+        True
+    else:
+        False
+
 ##############################################################################
 # Use logging class to log simple info messages
 ##############################################################################
