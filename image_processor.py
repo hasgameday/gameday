@@ -85,22 +85,21 @@ def main(argv=None):
 	
 	info_message('Retrieving jobs from queue %s. Processed images will be stored in %s and a message placed in queue %s' % (input_queue_name, s3_output_bucket, output_queue_name))
 
+	error_count = 0
 	def get_sqs_connection(region_name):
-		count = 0
 		try:
 			# Connect to SQS and open queue
 			return boto.sqs.connect_to_region(region_name)
 		except Exception as ex:
-			if count > RETRY_COUNT:
+			if error_count > RETRY_COUNT:
 				error_message("Encountered an error setting SQS region.  Please confirm you have queues in %s." % (region_name))
 				sys.exit(1)
 			else:
-				count += 1
+				error_count += 1
 				time.sleep(5)
 				get_sqs_connection(region_name)
 
 	def get_queue(sqs, queue_name):
-		count = 0
 		try:
 			if sqs.lookup(queue_name):
 				queue = sqs.get_queue(queue_name)
@@ -111,11 +110,12 @@ def main(argv=None):
 				get_queue(sqs, queue_name)
 
 		except Exception as ex:
-			if count > RETRY_COUNT:
+			if error_count > RETRY_COUNT:
 				error_message("Encountered an error connecting to SQS queue %s. Confirm that your queue exists." % (queue_name))
 				sys.exit(2)
 			else:
-				count += 1
+				error_count += 1
+				time.sleep(5)
 				get_queue(sqs, queue_name)
 
 	sqs = get_sqs_connection(region_name)
