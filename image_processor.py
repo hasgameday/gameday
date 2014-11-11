@@ -135,6 +135,7 @@ def main(argv=None):
 	
 		if len(rs) > 0:
 			for raw_message in rs:
+				time.sleep(5)
 				queue.put(raw_message)
 
 	worker.terminate()
