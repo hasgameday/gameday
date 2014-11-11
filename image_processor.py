@@ -229,10 +229,16 @@ class Logger:
 		self.log.addHandler(self.file_handler)
 		
 	def info(self, message):
-		self.log.info(time.asctime() + " " + message)
+		try:
+			self.log.info(time.asctime() + " " + message)
+		except:
+			self.log.info(message)
 		
 	def error(self, message):
-		self.log.error(time.asctime() + " " + message)
+		try:
+			self.log.error(time.asctime() + " " + message)
+		except:
+			self.log.error(message)
 
 logger = Logger()
 
