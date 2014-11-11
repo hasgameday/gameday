@@ -159,7 +159,7 @@ def process_message(message, s3_output_bucket, s3_endpoint, job_id):
 				info_message("downloading from \"%s\"" % line)
 				return_code = call("wget " + opt, shell=True)
 				if return_code != 0:
-					info_message("wget exited with %s", return_code)
+					info_message("wget exited with %s" % return_code)
 					continue
 			except OSError as e:
 				info_message("There was a junk url passed.")
